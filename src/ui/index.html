@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#080811" />
+    <title>AutoPick — Stremio stream selector</title>
+    <link rel="icon" href="/assets/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/configure/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <main class="shell">
+      <header class="hero">
+        <div class="brand-mark" aria-hidden="true"><span></span><span></span></div>
+        <div>
+          <div class="eyebrow">STREMIO STREAM ADDON</div>
+          <h1>AutoPick</h1>
+          <p>One stream. The right stream.</p>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Configuration mode">
+        <button type="button" class="tab active" data-mode="simple" aria-selected="true">Simple</button>
+        <button type="button" class="tab" data-mode="advanced" aria-selected="false">Advanced</button>
+      </nav>
+
+      <section id="simple-panel" class="panel mode-panel">
+        <div class="section-heading">
+          <div>
+            <span class="step">01</span>
+            <h2>Preferred quality</h2>
+          </div>
+          <p>Choose a ceiling, or let the profile decide.</p>
+        </div>
+        <div class="quality-picker" role="radiogroup" aria-label="Preferred quality">
+          <button type="button" data-quality="automatic" class="choice active">Automatic<span>Smart choice</span></button>
+          <button type="button" data-quality="2160p" class="choice">4K<span>2160p</span></button>
+          <button type="button" data-quality="1080p" class="choice">1080p<span>Full HD</span></button>
+          <button type="button" data-quality="720p" class="choice">720p<span>HD</span></button>
+        </div>
+
+        <div class="section-heading profile-heading">
+          <div>
+            <span class="step">02</span>
+            <h2>Profile</h2>
+          </div>
+          <p>How should AutoPick trade quality, size and reliability?</p>
+        </div>
+        <div class="profile-grid">
+          <button type="button" class="profile-card selected" data-profile="balanced4k">
+            <span class="profile-icon">◎</span>
+            <span class="profile-copy"><strong>Balanced</strong><small>Best default</small></span>
+            <span class="checkmark">✓</span>
+            <span class="profile-detail">High quality, healthy torrents, sensible sizes, good HDR and audio.</span>
+          </button>
+          <button type="button" class="profile-card" data-profile="maximumQuality">
+            <span class="profile-icon">◇</span>
+            <span class="profile-copy"><strong>Maximum Quality</strong><small>Big-screen first</small></span>
+            <span class="checkmark">✓</span>
+            <span class="profile-detail">Favors 4K, Remux, BluRay, Dolby Vision and lossless audio.</span>
+          </button>
+          <button type="button" class="profile-card" data-profile="fastStart">
+            <span class="profile-icon">ϟ</span>
+            <span class="profile-copy"><strong>Fast Start</strong><small>Reliability first</small></span>
+            <span class="checkmark">✓</span>
+            <span class="profile-detail">Favors high availability, moderate file sizes and quick startup.</span>
+          </button>
+          <button type="button" class="profile-card" data-profile="dataSaver">
+            <span class="profile-icon">◒</span>
+            <span class="profile-copy"><strong>Data Saver</strong><small>Use less bandwidth</small></span>
+            <span class="checkmark">✓</span>
+            <span class="profile-detail">Prefers smaller, efficient 1080p and 720p releases.</span>
+          </button>
+        </div>
+
+        <label class="setting-row prominent-switch">
+          <span><strong>Allow lower-resolution fallback</strong><small>Example: 4K → 1080p → 720p</small></span>
+          <input id="simple-fallback" type="checkbox" checked />
+          <span class="switch" aria-hidden="true"></span>
+        </label>
+      </section>
+
+      <section id="advanced-panel" class="mode-panel hidden">
+        <div class="advanced-intro panel">
+          <span class="sliders-icon">≡</span>
+          <div><h2>Advanced ranking</h2><p>Drag preferences into order. Disabled items are hard-blocked, not merely scored lower.</p></div>
+        </div>
+
+        <details class="settings-group" open>
+          <summary><span><b>Resolution</b><small>Quality order and fallback rules</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <p class="microcopy">Drag to reorder. At least one resolution must stay enabled.</p>
+            <ul id="resolution-order" class="sortable-list"></ul>
+            <div class="option-stack">
+              <label class="setting-row"><span><strong>Strict preferred resolution</strong><small>Reject every other resolution.</small></span><input type="checkbox" data-path="strictPreferredResolution" /><span class="switch"></span></label>
+              <label class="setting-row"><span><strong>Allow fallback resolution</strong><small>Move down the ordered list when needed.</small></span><input type="checkbox" data-path="fallbackResolution" /><span class="switch"></span></label>
+              <label class="setting-row"><span><strong>Allow higher resolution</strong><small>Consider quality above a manual preference.</small></span><input type="checkbox" data-path="allowHigherResolution" /><span class="switch"></span></label>
+            </div>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>HDR</b><small>Dolby Vision, HDR10+, HDR10, HLG and SDR</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <ul id="hdr-order" class="sortable-list"></ul>
+            <label class="setting-row"><span><strong>Require HDR</strong><small>Reject SDR even when it would otherwise win.</small></span><input type="checkbox" data-path="requireHdr" /><span class="switch"></span></label>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Video codec</b><small>Compatibility and efficiency preferences</small></span><i>⌄</i></summary>
+          <div class="settings-body"><ul id="codec-order" class="sortable-list"></ul><p class="microcopy">AV1 is not enabled as the first choice by default because device support varies.</p></div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Release quality</b><small>Source quality and blocked captures</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <ul id="release-order" class="sortable-list"></ul>
+            <h3 class="subheading">Block undesirable releases</h3>
+            <div id="blocked-quality" class="chip-checks"></div>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Audio</b><small>Preferred audio format order</small></span><i>⌄</i></summary>
+          <div class="settings-body"><ul id="audio-order" class="sortable-list"></ul><p class="microcopy">Audio helps break close calls, but normally cannot overpower a dramatically healthier video source.</p></div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Language</b><small>Default: prefer English</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <label class="field-label" for="preferred-language">Preferred language code</label>
+            <input id="preferred-language" class="text-input compact" type="text" maxlength="12" value="en" data-path="preferredLanguage" />
+            <div class="radio-cards" id="language-mode">
+              <label><input type="radio" name="language-mode" value="englishOnly" /><span><b>English only</b><small>Known non-English releases are rejected.</small></span></label>
+              <label><input type="radio" name="language-mode" value="preferEnglish" checked /><span><b>Prefer English</b><small>Other languages remain a fallback.</small></span></label>
+              <label><input type="radio" name="language-mode" value="any" /><span><b>Any language</b><small>Language does not affect ranking.</small></span></label>
+            </div>
+            <label class="setting-row"><span><strong>Strict language matching</strong><small>Also reject releases with unknown language.</small></span><input type="checkbox" data-path="strictLanguage" /><span class="switch"></span></label>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>File size</b><small>Separate soft targets and hard limits</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <div class="limit-grid">
+              <div class="limit-card"><h3>Movies</h3><label>Soft target <span><input type="number" min="0.1" max="250" step="0.5" data-path="sizes.movie.softGb" /> GB</span></label><label>Hard maximum <span><input type="number" min="0.1" max="250" step="0.5" data-path="sizes.movie.hardGb" /> GB</span></label></div>
+              <div class="limit-card"><h3>Episodes</h3><label>Soft target <span><input type="number" min="0.1" max="250" step="0.5" data-path="sizes.episode.softGb" /> GB</span></label><label>Hard maximum <span><input type="number" min="0.1" max="250" step="0.5" data-path="sizes.episode.hardGb" /> GB</span></label></div>
+            </div>
+            <p class="microcopy">Above the soft target receives a penalty. Above the hard maximum is always rejected.</p>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Availability</b><small>Seeders and unknown-source policy</small></span><i>⌄</i></summary>
+          <div class="settings-body two-column-fields">
+            <label><span>Minimum seeders</span><input type="number" min="0" max="10000" step="1" data-path="availability.minimumSeeders" /></label>
+            <label><span>Unknown seeder count</span><select data-path="availability.unknownSeeders"><option value="allow">Allow</option><option value="penalise">Allow with penalty</option><option value="reject">Reject</option></select></label>
+            <p class="microcopy full">Availability uses diminishing returns: going from 1 to 10 seeders matters far more than going from 501 to 510.</p>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Torrent sources</b><small>Upstream Stremio addons</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <label class="setting-row"><span><strong>Public-domain demo source</strong><small>Known legal test material for local verification.</small></span><input type="checkbox" data-path="includeDemoSource" /><span class="switch"></span></label>
+            <div class="source-heading"><div><h3>Upstream addon URLs</h3><p>HTTPS is required remotely. Localhost HTTP works only in development.</p></div><button id="add-source" type="button" class="small-button">+ Add source</button></div>
+            <div id="source-list" class="source-list"></div>
+            <p class="microcopy warning-copy">Never put passwords, API keys or secret tokens in an upstream URL. Settings are stored in the addon URL.</p>
+          </div>
+        </details>
+
+        <details class="settings-group">
+          <summary><span><b>Output &amp; preflight</b><small>Backups and viability probes</small></span><i>⌄</i></summary>
+          <div class="settings-body">
+            <label class="setting-row"><span><strong>Show manual backup streams</strong><small>Keep one PLAY result by default.</small></span><input type="checkbox" data-path="showBackups" /><span class="switch"></span></label>
+            <div class="two-column-fields">
+              <label><span>Backup streams</span><input type="number" min="1" max="3" step="1" data-path="backupCount" /></label>
+              <label><span>Top candidates to check</span><input type="number" min="1" max="5" step="1" data-path="healthCandidates" /></label>
+            </div>
+            <p class="microcopy">The server operator controls whether preflight is enabled. AutoPick only checks before playback and cannot switch releases mid-play.</p>
+          </div>
+        </details>
+      </section>
+
+      <section class="utility panel">
+        <div><h2>Settings portability</h2><p>No account needed. Move this configuration as a JSON file.</p></div>
+        <div class="utility-actions">
+          <button id="export-settings" type="button" class="small-button">Export settings</button>
+          <button id="import-settings" type="button" class="small-button">Import settings</button>
+          <button id="reset-settings" type="button" class="small-button danger">Reset</button>
+          <input id="import-file" type="file" accept="application/json,.json" hidden />
+        </div>
+      </section>
+
+      <aside class="p2p-warning">
+        <span aria-hidden="true">!</span>
+        <p><strong>P2P privacy notice</strong>Torrent/P2P streaming connects directly to other peers and can expose your IP address to those peers. AutoPick does not provide anonymity.</p>
+      </aside>
+      <div class="bottom-space"></div>
+    </main>
+
+    <div class="sticky-action">
+      <div class="action-inner">
+        <div class="url-preview"><span>Configured addon</span><code id="addon-url">Validating settings…</code><small id="validation-message" aria-live="polite"></small></div>
+        <div class="action-buttons">
+          <button id="copy-url" type="button" class="secondary-action">Copy addon URL</button>
+          <a id="install-button" class="install-action" href="#" aria-disabled="true"><span>▶</span> Install in Stremio</a>
+        </div>
+      </div>
+    </div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script src="/configure/app.js" defer></script>
+  </body>
+</html>

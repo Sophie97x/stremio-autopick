@@ -1,0 +1,17 @@
+services:
+  autopick:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "${PORT:-7000}:7000"
+    environment:
+      PORT: 7000
+      BASE_URL: ${BASE_URL:-http://127.0.0.1:7000}
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PREFLIGHT_ENABLED: ${PREFLIGHT_ENABLED:-false}
+      PREFLIGHT_TIMEOUT_MS: ${PREFLIGHT_TIMEOUT_MS:-3000}
+      PREFLIGHT_MAX_CANDIDATES: ${PREFLIGHT_MAX_CANDIDATES:-3}
+      ENABLE_DEBUG: ${ENABLE_DEBUG:-false}
+      UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-2500}
+      UPSTREAM_MAX_RESPONSE_BYTES: ${UPSTREAM_MAX_RESPONSE_BYTES:-1048576}
