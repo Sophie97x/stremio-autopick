@@ -166,9 +166,9 @@
           <summary><span><b>Torrent sources</b><small>Upstream Stremio addons</small></span><i>⌄</i></summary>
           <div class="settings-body">
             <label class="setting-row"><span><strong>Public-domain demo source</strong><small>Known legal test material for local verification.</small></span><input type="checkbox" data-path="includeDemoSource" /><span class="switch"></span></label>
-            <div class="source-heading"><div><h3>Upstream addon URLs</h3><p>HTTPS is required remotely. Localhost HTTP works only in development.</p></div><button id="add-source" type="button" class="small-button">+ Add source</button></div>
+            <div class="source-heading"><div><h3>Upstream addon URLs</h3><p id="source-policy-note">This server checks which upstream hosts are allowed.</p></div><button id="add-source" type="button" class="small-button">+ Add source</button></div>
             <div id="source-list" class="source-list"></div>
-            <p class="microcopy warning-copy">Never put passwords, API keys or secret tokens in an upstream URL. Settings are stored in the addon URL.</p>
+            <p class="microcopy warning-copy">Torrentio is an independent third-party service. It may change, rate-limit requests or become unavailable. Never put passwords, API keys or secret tokens in an upstream URL; settings are stored in the addon URL.</p>
           </div>
         </details>
 
@@ -198,6 +198,10 @@
       <aside class="p2p-warning">
         <span aria-hidden="true">!</span>
         <p><strong>P2P privacy notice</strong>Torrent/P2P streaming connects directly to other peers and can expose your IP address to those peers. AutoPick does not provide anonymity.</p>
+      </aside>
+      <aside class="p2p-warning">
+        <span aria-hidden="true">i</span>
+        <p><strong>Third-party and legal-use notice</strong>AutoPick only ranks results and does not host media. Torrentio is independent and its availability is not guaranteed. Use AutoPick only with sources and content you are legally allowed to access.</p>
       </aside>
       <div class="bottom-space"></div>
     </main>

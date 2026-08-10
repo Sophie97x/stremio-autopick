@@ -16,6 +16,8 @@ const envSchema = z.object({
   ENABLE_DEBUG: booleanString,
   UPSTREAM_TIMEOUT_MS: z.coerce.number().int().min(250).max(10_000).default(2_500),
   UPSTREAM_MAX_RESPONSE_BYTES: z.coerce.number().int().min(16_384).max(5_242_880).default(1_048_576),
+  UPSTREAM_ALLOWED_HOSTS: z.string().trim().min(1).default("torrentio.strem.fun"),
+  MAX_CONCURRENT_STREAM_REQUESTS: z.coerce.number().int().min(1).max(1_024).default(32),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

@@ -22,6 +22,7 @@
   let state;
   let defaults;
   let presets;
+  let capabilities;
   let manifestUrl = "";
   let installUrl = "";
   let encodeTimer;
@@ -308,7 +309,12 @@
       const presetData = await presetResponse.json();
       defaults = presetData.default;
       presets = presetData.presets;
+      capabilities = presetData.capabilities;
       state = clone(defaults);
+      const sourcePolicyNote = $("#source-policy-note");
+      sourcePolicyNote.textContent = capabilities?.allowAnyUpstreamHost
+        ? "HTTPS is required remotely. Localhost HTTP works only in development."
+        : `This server permits only: ${capabilities?.allowedUpstreamHosts?.join(", ") || "no upstream hosts"}.`;
       const match = window.location.pathname.match(/^\/([^/]+)\/configure\/?$/);
       if (match?.[1]) {
         const response = await fetch(`/api/config/${encodeURIComponent(match[1])}`);

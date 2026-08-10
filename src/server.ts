@@ -2,6 +2,7 @@ import "dotenv/config";
 import path from "node:path";
 import express, { type ErrorRequestHandler, type RequestHandler } from "express";
 import sdk from "stremio-addon-sdk";
+import { manifest } from "./addon/manifest";
 import { createAddonInterface } from "./addon/stremio";
 import { StreamService } from "./addon/streamHandler";
 import { ConfigError, decodeConfig, encodeConfig, validateConfig } from "./config/encode";
@@ -9,7 +10,10 @@ import { defaultConfig, presetConfigs } from "./config/defaults";
 import { loadEnv, type AppEnv } from "./env";
 import { createLogger } from "./logger";
 import { CinemetaMetadataResolver } from "./metadata/resolver";
+import { assertConfigSourcesAllowed, parseAllowedUpstreamHosts, SourcePolicyError } from "./security/upstreamPolicy";
 import { DiscoveryService } from "./sources/discovery";
+
+export const STREAM_CACHE_SECONDS = 5 * 60;
 
 export interface CreateAppOptions {
   env?: AppEnv;
@@ -35,6 +39,58 @@ const securityHeaders: RequestHandler = (_request, response, next) => {
   next();
 };
 
+function isConfiguredStreamPath(url: string): boolean {
+  return /^\/[^/?]+\/stream\/(?:movie|series)\/[^?]+\.json(?:\?|$)/.test(url);
+}
+
+function isConfiguredManifestPath(url: string): boolean {
+  return /^\/[^/?]+\/manifest\.json(?:\?|$)/.test(url);
+}
+
+function streamConcurrencyLimit(maxConcurrent: number): RequestHandler {
+  let active = 0;
+  return (request, response, next) => {
+    if (!isConfiguredStreamPath(request.url)) {
+      next();
+      return;
+    }
+    if (active >= maxConcurrent) {
+      response.setHeader("Retry-After", "2");
+      response.setHeader("Cache-Control", "no-store");
+      response.status(503).json({ error: "AutoPick is busy; try again shortly" });
+      return;
+    }
+    active += 1;
+    let released = false;
+    const release = () => {
+      if (released) return;
+      released = true;
+      active -= 1;
+    };
+    response.once("finish", release);
+    response.once("close", release);
+    next();
+  };
+}
+
+const cacheHeaders: RequestHandler = (request, response, next) => {
+  if (isConfiguredStreamPath(request.url)) {
+    response.setHeader("Cache-Control", `public, max-age=${STREAM_CACHE_SECONDS}, s-maxage=${STREAM_CACHE_SECONDS}`);
+  } else if (request.path === "/manifest.json") {
+    response.setHeader("Cache-Control", "public, max-age=300, s-maxage=300");
+  } else if (request.path.startsWith("/assets/")) {
+    response.setHeader("Cache-Control", "public, max-age=86400");
+  } else if (
+    request.path === "/healthz" ||
+    request.path.startsWith("/api/") ||
+    request.path.includes("/configure") ||
+    isConfiguredManifestPath(request.url)
+  ) {
+    response.setHeader("Cache-Control", "no-store");
+  }
+  next();
+};
+
 export function createApp(options: CreateAppOptions = {}): express.Express {
   const env = options.env ?? loadEnv();
   const logger = createLogger(env);
@@ -48,8 +104,10 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
   app.disable("x-powered-by");
   app.use(express.json({ limit: "16kb", strict: true }));
   app.use(securityHeaders);
+  app.use(cacheHeaders);
+  app.use(streamConcurrencyLimit(env.MAX_CONCURRENT_STREAM_REQUESTS));
 
-  app.get("/healthz", (_request, response) => response.json({ status: "ok", version: "1.0.0" }));
+  app.get("/healthz", (_request, response) => response.json({ status: "ok", version: manifest.version }));
   app.get("/assets/logo.svg", (_request, response) => response.sendFile(path.join(uiDirectory, "logo.svg")));
 
   app.get("/configure/styles.css", (_request, response) => response.sendFile(path.join(uiDirectory, "styles.css")));
@@ -60,7 +118,8 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
   app.get(["/configure", "/:config/configure"], (request, response, next) => {
     if (request.params.config) {
       try {
-        decodeConfig(request.params.config);
+        const config = decodeConfig(request.params.config);
+        assertConfigSourcesAllowed(config, env.UPSTREAM_ALLOWED_HOSTS);
       } catch (error) {
         next(error);
         return;
@@ -69,10 +128,19 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
     response.sendFile(path.join(uiDirectory, "index.html"));
   });
 
-  app.get("/api/presets", (_request, response) => response.json({ default: defaultConfig, presets: presetConfigs }));
+  app.get("/api/presets", (_request, response) => {
+    const policy = parseAllowedUpstreamHosts(env.UPSTREAM_ALLOWED_HOSTS);
+    response.json({
+      default: defaultConfig,
+      presets: presetConfigs,
+      capabilities: { allowedUpstreamHosts: policy.hosts, allowAnyUpstreamHost: policy.allowAny },
+    });
+  });
   app.get("/api/config/:config", (request, response, next) => {
     try {
-      response.json({ config: decodeConfig(request.params.config) });
+      const config = decodeConfig(request.params.config);
+      assertConfigSourcesAllowed(config, env.UPSTREAM_ALLOWED_HOSTS);
+      response.json({ config });
     } catch (error) {
       next(error);
     }
@@ -80,6 +148,7 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
   app.post("/api/config/encode", (request, response, next) => {
     try {
       const config = validateConfig(request.body);
+      assertConfigSourcesAllowed(config, env.UPSTREAM_ALLOWED_HOSTS);
       const encoded = encodeConfig(config);
       const manifestUrl = `${baseUrl}/${encoded}/manifest.json`;
       response.json({ config, encoded, manifestUrl, installUrl: installUrl(manifestUrl) });
@@ -97,6 +166,7 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
       const type = request.params.type;
       if (type !== "movie" && type !== "series") throw new ConfigError("Unsupported content type");
       const config = request.params.config ? decodeConfig(request.params.config) : defaultConfig;
+      assertConfigSourcesAllowed(config, env.UPSTREAM_ALLOWED_HOSTS);
       const result = await streamService.rank({ type, id: request.params.id ?? "", config });
       response.json({
         winner: result.winner ?? null,
@@ -124,6 +194,7 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
     }
     try {
       const config = decodeConfig(match[1]);
+      assertConfigSourcesAllowed(config, env.UPSTREAM_ALLOWED_HOSTS);
       request.url = `/${encodeURIComponent(JSON.stringify(config))}/${match[2]}${match[3] ?? ""}`;
       next();
     } catch (error) {
@@ -135,7 +206,8 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
 
   app.use((_request, response) => response.status(404).json({ error: "Not found" }));
   const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
-    if (error instanceof ConfigError) {
+    response.setHeader("Cache-Control", "no-store");
+    if (error instanceof ConfigError || error instanceof SourcePolicyError) {
       response.status(400).json({ error: error.message });
       return;
     }

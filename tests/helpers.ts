@@ -37,6 +37,8 @@ export function testEnv(overrides: Partial<AppEnv> = {}): AppEnv {
       ENABLE_DEBUG: "false",
       UPSTREAM_TIMEOUT_MS: "1000",
       UPSTREAM_MAX_RESPONSE_BYTES: "1048576",
+      UPSTREAM_ALLOWED_HOSTS: "*",
+      MAX_CONCURRENT_STREAM_REQUESTS: "32",
     }),
     ...overrides,
   };

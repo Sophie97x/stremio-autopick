@@ -10,7 +10,7 @@ I built AutoPick because choosing a torrent in Stremio should not mean comparing
 
 You set your preferences once, open a movie or episode, and AutoPick returns one clean **▶ PLAY** result. It quietly handles the quality, size, HDR, audio and availability checks in the background.
 
-No account, login, database, debrid service, subscription or API key is needed.
+No AutoPick account, login, database, debrid service, subscription or API key is needed.
 
 ![AutoPick configuration page](docs/configure-desktop.png)
 
@@ -47,11 +47,13 @@ PORT=7077 BASE_URL=http://127.0.0.1:7077 npm run dev
 
 Then open [http://127.0.0.1:7077/configure](http://127.0.0.1:7077/configure).
 
-## Add a torrent source
+## Torrent sources
 
-AutoPick does not include a general torrent index.
+The public defaults use the independent third-party Torrentio addon, so AutoPick can return results immediately. Torrentio can change, rate-limit requests or disappear without notice. The public-domain demo source is disabled by default and can be enabled for legal testing with IMDb ID `tt1254207`.
 
-To use it with your own lawful sources:
+The public `autopick.click` server accepts only `torrentio.strem.fun`. A self-hosted operator can change `UPSTREAM_ALLOWED_HOSTS` to a comma-separated exact hostname list. Use `*` only on a private development instance.
+
+To manage sources:
 
 1. Open the configuration page.
 2. Choose **Advanced**.
@@ -59,9 +61,7 @@ To use it with your own lawful sources:
 4. Add the manifest URL of another Stremio stream addon.
 5. Save by installing the newly generated AutoPick URL.
 
-Remote source URLs must use HTTPS. Localhost HTTP is allowed during development.
-
-The included demo source only exists so the project can be tested with public-domain material. Try IMDb ID `tt1254207` while it is enabled.
+Remote source URLs must use HTTPS. Localhost HTTP is allowed only during development. Never put credentials or secret tokens in a source URL because the complete configuration is stored in the addon URL.
 
 ## Profiles
 
@@ -117,6 +117,8 @@ Do not put passwords, private API keys or secret tokens in an upstream URL. Anyo
 
 > **P2P warning:** Torrent streaming connects directly to other peers and can expose your IP address to those peers. AutoPick does not provide anonymity.
 
+AutoPick only ranks results; it does not host media. Use it only with sources and content you are legally allowed to access.
+
 ## Docker
 
 ```bash
@@ -134,7 +136,7 @@ docker compose down
 If port 7000 is busy:
 
 ```bash
-PORT=7077 BASE_URL=http://127.0.0.1:7077 docker compose up -d --build
+HOST_PORT=7077 BASE_URL=http://127.0.0.1:7077 docker compose up -d --build
 ```
 
 ## Useful commands
@@ -148,27 +150,61 @@ npm run build      # production build
 npm start          # run the production build
 ```
 
-## Public hosting
+## Public hosting with Cloudflare Tunnel
 
-A public Stremio addon needs a stable HTTPS address. Set `BASE_URL` to the exact public origin before starting it:
+The production setup uses a named Cloudflare Tunnel, so the server needs no router port-forwarding and the home IP is not published in DNS.
+
+On the always-on Linux Docker server, create the untracked environment file with private permissions:
 
 ```bash
-BASE_URL=https://your-domain.example docker compose up -d --build
+umask 077
+cp .env.example .env
+chmod 600 .env
 ```
 
-`Caddyfile.example` contains a small reverse-proxy example that handles HTTPS.
+Set these production values in `.env` without committing or sharing the tunnel token:
+
+```dotenv
+BASE_URL=https://autopick.click
+NODE_ENV=production
+UPSTREAM_ALLOWED_HOSTS=torrentio.strem.fun
+MAX_CONCURRENT_STREAM_REQUESTS=32
+TUNNEL_TOKEN=replace-with-the-cloudflare-tunnel-token
+```
+
+Then start the private app and tunnel:
+
+```bash
+sudo systemctl enable --now docker
+docker compose --profile public up -d --build
+docker compose ps
+```
+
+Docker binds the app only to `127.0.0.1` on the host. `cloudflared` reaches it over the internal Docker network at `http://autopick:7000`.
+
+Cloudflare setup:
+
+1. Add `autopick.click` to Cloudflare and replace the Namecheap nameservers with the two assigned by Cloudflare.
+2. Create a remotely managed tunnel named `autopick-home`.
+3. Add public hostname `autopick.click` with service URL `http://autopick:7000`.
+4. Turn on Always Use HTTPS.
+5. Add a rate-limiting rule for configured stream paths: 60 requests per IP in 10 seconds, blocking for 10 seconds.
+6. Keep inbound firewall ports closed except trusted SSH or VPN access, and verify domain-registration privacy before publishing.
+
+The containers use restart policies, dropped Linux capabilities, read-only filesystems and no-new-privileges. After a reboot, verify both show as running with `docker compose --profile public ps`.
 
 Check the deployment before publishing:
 
 ```bash
-curl -fsS https://your-domain.example/healthz
-curl -fsS https://your-domain.example/manifest.json
+curl -fsS https://autopick.click/healthz
+curl -fsS https://autopick.click/manifest.json
+curl -fsS https://autopick.click/configure >/dev/null
 ```
 
 Then submit the root manifest to Stremio:
 
 ```bash
-PUBLIC_MANIFEST_URL=https://your-domain.example/manifest.json npm run publish:addon
+PUBLIC_MANIFEST_URL=https://autopick.click/manifest.json npm run publish:addon
 ```
 
 Publish the root `/manifest.json`, not a personal configured URL. The public listing sends each person to `/configure` so they can create their own settings.
@@ -177,7 +213,8 @@ Publish the root `/manifest.json`, not a personal configured URL. The public lis
 
 | Variable | Default | What it controls |
 | --- | --- | --- |
-| `PORT` | `7000` | Server port |
+| `HOST_PORT` | `7000` | Loopback-only Docker host port |
+| `PORT` | `7000` | Node server port inside the container |
 | `BASE_URL` | `http://127.0.0.1:7000` | Public origin used in generated addon URLs |
 | `NODE_ENV` | `development` | Development or production safety mode |
 | `LOG_LEVEL` | `info` | Operational log detail |
@@ -187,6 +224,9 @@ Publish the root `/manifest.json`, not a personal configured URL. The public lis
 | `ENABLE_DEBUG` | `false` | Enables ranking debug endpoints |
 | `UPSTREAM_TIMEOUT_MS` | `2500` | Timeout for each upstream addon |
 | `UPSTREAM_MAX_RESPONSE_BYTES` | `1048576` | Maximum upstream JSON response size |
+| `UPSTREAM_ALLOWED_HOSTS` | `torrentio.strem.fun` | Exact comma-separated upstream host allowlist; `*` permits all valid hosts |
+| `MAX_CONCURRENT_STREAM_REQUESTS` | `32` | Maximum in-flight configured stream requests |
+| `TUNNEL_TOKEN` | empty | Secret token used only by the optional `public` Cloudflare Tunnel profile |
 
 ## Debug ranking
 
@@ -220,6 +260,8 @@ User-supplied upstream URLs are protected against server-side request forgery:
 - DNS results and redirects are checked again.
 - Private, loopback, link-local, reserved and metadata addresses are blocked in production.
 - Responses must be JSON and stay within time and size limits.
+- Production can restrict upstreams to exact hostnames with no suffix matching.
+- Stream requests are capped at 32 in flight and cached for five minutes.
 - One broken source does not break the whole stream request.
 
 ## Current limits
@@ -231,9 +273,9 @@ User-supplied upstream URLs are protected against server-side request forgery:
 - Direct HTTP video streams are ignored; AutoPick ranks torrent `infoHash` streams.
 - Caches are kept in memory and reset when the server restarts.
 
-## Legal note
+## Third-party and legal note
 
-AutoPick is a stream-ranking tool. It does not include unauthorised content indexes. Use sources and content you are legally allowed to access.
+AutoPick is a stream-ranking tool and does not host media. Torrentio is independent from AutoPick and its operators. Its availability and results are not guaranteed. Use sources and content you are legally allowed to access.
 
 ## License
 

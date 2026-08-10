@@ -2,8 +2,19 @@ services:
   autopick:
     build: .
     restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    pids_limit: 128
     ports:
-      - "${PORT:-7000}:7000"
+      - "127.0.0.1:${HOST_PORT:-7000}:7000"
+    expose:
+      - "7000"
     environment:
       PORT: 7000
       BASE_URL: ${BASE_URL:-http://127.0.0.1:7000}
@@ -15,3 +26,33 @@ services:
       ENABLE_DEBUG: ${ENABLE_DEBUG:-false}
       UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-2500}
       UPSTREAM_MAX_RESPONSE_BYTES: ${UPSTREAM_MAX_RESPONSE_BYTES:-1048576}
+      UPSTREAM_ALLOWED_HOSTS: ${UPSTREAM_ALLOWED_HOSTS:-torrentio.strem.fun}
+      MAX_CONCURRENT_STREAM_REQUESTS: ${MAX_CONCURRENT_STREAM_REQUESTS:-32}
+    networks:
+      - backend
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.7.2
+    profiles:
+      - public
+    restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    pids_limit: 128
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
+    depends_on:
+      autopick:
+        condition: service_healthy
+    networks:
+      - backend
+
+networks:
+  backend:

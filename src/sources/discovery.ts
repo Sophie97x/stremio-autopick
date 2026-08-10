@@ -5,11 +5,12 @@ import type { AutoPickConfig } from "../config/schema";
 import type { StreamCandidate } from "../core/candidate";
 import type { AppEnv } from "../env";
 import type { MetadataResolver } from "../metadata/types";
+import { assertConfigSourcesAllowed } from "../security/upstreamPolicy";
 import { StaticDemoAdapter } from "./demo";
 import type { TorrentSourceAdapter } from "./types";
 import { UpstreamStremioAdapter } from "./upstreamStremio";
 
-const POSITIVE_TTL_MS = 7 * 60 * 1_000;
+const POSITIVE_TTL_MS = 5 * 60 * 1_000;
 const NEGATIVE_TTL_MS = 90 * 1_000;
 
 function adapterSetKey(adapters: TorrentSourceAdapter[]): string {
@@ -45,6 +46,7 @@ export class DiscoveryService {
   ) {}
 
   private adapters(config: AutoPickConfig): TorrentSourceAdapter[] {
+    assertConfigSourcesAllowed(config, this.env.UPSTREAM_ALLOWED_HOSTS);
     const adapters: TorrentSourceAdapter[] = [];
     if (config.includeDemoSource) adapters.push(new StaticDemoAdapter());
     for (const source of config.sources.filter((entry) => entry.enabled).sort((a, b) => a.priority - b.priority)) {

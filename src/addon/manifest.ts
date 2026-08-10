@@ -1,6 +1,6 @@
 export const manifest = {
   id: "community.autopick",
-  version: "1.0.0",
+  version: "1.1.0",
   name: "AutoPick",
   description: "One stream. The right stream. Automatically ranks torrent streams using your stateless preferences.",
   resources: ["stream"],

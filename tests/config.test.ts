@@ -11,6 +11,10 @@ import {
 describe("configuration", () => {
   it("validates the default config", () => {
     expect(validateConfig(defaultConfig)).toEqual(defaultConfig);
+    expect(defaultConfig.includeDemoSource).toBe(false);
+    expect(defaultConfig.sources).toEqual([
+      { url: "https://torrentio.strem.fun/manifest.json", enabled: true, priority: 0 },
+    ]);
   });
 
   it("round-trips JSON through Base64URL", () => {
