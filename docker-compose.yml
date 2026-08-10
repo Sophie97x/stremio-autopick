@@ -12,7 +12,7 @@ services:
       - /tmp:size=16m,mode=1777
     pids_limit: 128
     ports:
-      - "127.0.0.1:${HOST_PORT:-7000}:7000"
+      - "${BIND_ADDRESS:-127.0.0.1}:${HOST_PORT:-7000}:7000"
     expose:
       - "7000"
     environment:

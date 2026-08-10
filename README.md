@@ -180,7 +180,9 @@ docker compose --profile public up -d --build
 docker compose ps
 ```
 
-Docker binds the app only to `127.0.0.1` on the host. `cloudflared` reaches it over the internal Docker network at `http://autopick:7000`.
+Docker binds the app only to `127.0.0.1` by default. `cloudflared` in this Compose project reaches it over the Docker network at `http://autopick:7000`.
+
+If the tunnel connector runs on a separate hypervisor instead, set `BIND_ADDRESS` to the server's private IP, point the tunnel at that private address, and firewall the port so only the connector host can reach it.
 
 Cloudflare setup:
 
@@ -214,6 +216,7 @@ Publish the root `/manifest.json`, not a personal configured URL. The public lis
 | Variable | Default | What it controls |
 | --- | --- | --- |
 | `HOST_PORT` | `7000` | Loopback-only Docker host port |
+| `BIND_ADDRESS` | `127.0.0.1` | Address that publishes the Docker port; keep loopback unless a firewalled connector host needs it |
 | `PORT` | `7000` | Node server port inside the container |
 | `BASE_URL` | `http://127.0.0.1:7000` | Public origin used in generated addon URLs |
 | `NODE_ENV` | `development` | Development or production safety mode |
