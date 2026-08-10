@@ -43,6 +43,14 @@ describe("public server safeguards", () => {
     });
   });
 
+  it("sends the public root to the configuration page", async () => {
+    const baseUrl = await listen();
+    const response = await fetch(`${baseUrl}/`, { redirect: "manual" });
+    expect(response.status).toBe(302);
+    expect(response.headers.get("location")).toBe("/configure");
+    expect(response.headers.get("cache-control")).toBe("no-store");
+  });
+
   it("rejects disallowed sources in encoded and crafted configured URLs", async () => {
     const baseUrl = await listen();
     const disallowed = structuredClone(defaultConfig);

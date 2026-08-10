@@ -81,6 +81,7 @@ const cacheHeaders: RequestHandler = (request, response, next) => {
   } else if (request.path.startsWith("/assets/")) {
     response.setHeader("Cache-Control", "public, max-age=86400");
   } else if (
+    request.path === "/" ||
     request.path === "/healthz" ||
     request.path.startsWith("/api/") ||
     request.path.includes("/configure") ||
@@ -107,6 +108,7 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
   app.use(cacheHeaders);
   app.use(streamConcurrencyLimit(env.MAX_CONCURRENT_STREAM_REQUESTS));
 
+  app.get("/", (_request, response) => response.redirect(302, "/configure"));
   app.get("/healthz", (_request, response) => response.json({ status: "ok", version: manifest.version }));
   app.get("/assets/logo.svg", (_request, response) => response.sendFile(path.join(uiDirectory, "logo.svg")));
 
