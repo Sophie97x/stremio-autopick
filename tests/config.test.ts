@@ -7,6 +7,7 @@ import {
   encodeConfig,
   validateConfig,
 } from "../src/config/encode";
+import { createPresetConfig } from "../src/config/presets";
 
 describe("configuration", () => {
   it("validates the default config", () => {
@@ -21,6 +22,24 @@ describe("configuration", () => {
     const encoded = encodeConfig(defaultConfig);
     expect(encoded).toMatch(/^[A-Za-z0-9_-]+$/);
     expect(decodeConfig(encoded)).toEqual(defaultConfig);
+  });
+
+  it("creates the TV Stick reliability preset", () => {
+    expect(createPresetConfig("tvStick")).toMatchObject({
+      preset: "tvStick",
+      resolutionOrder: ["1080p", "720p", "480p", "2160p"],
+      enabledResolutions: ["1080p", "720p", "480p"],
+      hdrOrder: ["sdr", "hdr10", "hlg", "hdr10plus", "dolbyVision"],
+      enabledHdr: ["sdr"],
+      codecOrder: ["h264", "hevc", "av1"],
+      enabledCodecs: ["h264", "hevc"],
+      audioOrder: ["ac3", "eac3", "aac", "dts", "atmos", "dtshd", "dtshdma", "dtsx", "truehd", "atmosTruehd"],
+      sizes: { movie: { softGb: 6, hardGb: 12 }, episode: { softGb: 2, hardGb: 4 } },
+      availability: { minimumSeeders: 20, unknownSeeders: "penalise" },
+      showBackups: true,
+      backupCount: 3,
+      healthCandidates: 5,
+    });
   });
 
   it("rejects invalid Base64URL", () => {

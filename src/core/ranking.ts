@@ -59,8 +59,22 @@ function tieBreak(a: RankedCandidate, b: RankedCandidate, config: AutoPickConfig
   return a.originalTitle.localeCompare(b.originalTitle);
 }
 
+function reportedAvailability(candidate: RankedCandidate): number {
+  if (candidate.seeders !== undefined) return candidate.seeders;
+  if (candidate.peers !== undefined) return candidate.peers * 0.5;
+  return -1;
+}
+
 export function sortRankedCandidates(candidates: RankedCandidate[], config: AutoPickConfig): RankedCandidate[] {
   return candidates.sort((a, b) => {
+    if (config.preset === "tvStick") {
+      const health = healthRank[b.health] - healthRank[a.health];
+      if (health !== 0) return health;
+      const availability = reportedAvailability(b) - reportedAvailability(a);
+      if (availability !== 0) return availability;
+      const score = b.score - a.score;
+      return score || tieBreak(a, b, config);
+    }
     const difference = b.score - a.score;
     const denominator = Math.max(Math.abs(a.score), Math.abs(b.score), 1);
     if (Math.abs(difference) / denominator > 0.05) return difference;

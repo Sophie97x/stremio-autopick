@@ -19,9 +19,14 @@ export function effectiveResolutionOrder(config: AutoPickConfig): Resolution[] {
     order = config.resolutionOrder.filter((resolution) => config.enabledResolutions.includes(resolution));
   } else {
     order = [...simpleFallbacks[config.preferredQuality]];
+    if (config.preset === "tvStick") {
+      order = order.filter((resolution) => config.enabledResolutions.includes(resolution));
+    }
     if (config.allowHigherResolution) {
       for (const resolution of ["2160p", "1080p", "720p", "480p"] as const) {
-        if (!order.includes(resolution)) order.push(resolution);
+        if (!order.includes(resolution) && (config.preset !== "tvStick" || config.enabledResolutions.includes(resolution))) {
+          order.push(resolution);
+        }
       }
     }
   }

@@ -28,10 +28,10 @@ describe("public server safeguards", () => {
     return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   }
 
-  it("reports the 1.1.0 version and public source capability", async () => {
+  it("reports the 1.2.0 version and public source capability", async () => {
     const baseUrl = await listen();
     const healthResponse = await fetch(`${baseUrl}/healthz`);
-    expect(await healthResponse.json()).toEqual({ status: "ok", version: "1.1.0" });
+    expect(await healthResponse.json()).toEqual({ status: "ok", version: "1.2.0" });
     expect(healthResponse.headers.get("cache-control")).toBe("no-store");
 
     const presets = await fetch(`${baseUrl}/api/presets`).then((response) => response.json()) as {

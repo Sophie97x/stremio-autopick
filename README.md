@@ -70,6 +70,7 @@ Remote source URLs must use HTTPS. Localhost HTTP is allowed only during develop
 | **Balanced** | The best everyday mix of quality, reliability and sensible file size |
 | **Maximum Quality** | 4K, Remux, BluRay, HDR and lossless audio, with much larger files allowed |
 | **Fast Start** | Healthy torrents, smaller files and quicker startup |
+| **TV Stick** | Seeder-first 1080p/SDR playback, compatible codecs and three backups |
 | **Data Saver** | Smaller 1080p and 720p releases with efficient codecs |
 
 Every profile can be adjusted in Advanced mode.
@@ -96,6 +97,8 @@ The remaining releases are scored separately for:
 - preflight health
 
 Availability uses diminishing returns, so moving from 1 to 10 seeders matters much more than moving from 501 to 510. If two releases are very close, AutoPick prefers the healthier and smaller sensible option.
+
+The **TV Stick** profile is deliberately different: after rejecting incompatible or fragile releases, it ranks the remaining torrents by reported seeders first. It blocks 4K, HDR and AV1, requires at least 20 reported seeders, and returns three manual backups. Seeder counts come from the upstream addon and cannot guarantee that a swarm will start.
 
 ## Series and season packs
 

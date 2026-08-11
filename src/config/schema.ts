@@ -17,7 +17,7 @@ export const AUDIO_FORMATS = [
   "aac",
 ] as const;
 export const UNDESIRABLE_QUALITIES = ["cam", "ts", "telecine", "screener"] as const;
-export const PRESETS = ["balanced4k", "maximumQuality", "fastStart", "dataSaver"] as const;
+export const PRESETS = ["balanced4k", "maximumQuality", "fastStart", "tvStick", "dataSaver"] as const;
 
 const completeOrder = <T extends readonly [string, ...string[]]>(values: T) =>
   z

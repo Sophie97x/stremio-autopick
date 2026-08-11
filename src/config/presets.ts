@@ -30,7 +30,23 @@ const shared: Omit<
 
 const presetOverrides: Record<
   PresetName,
-  Pick<AutoPickConfig, "resolutionOrder" | "enabledResolutions" | "sizes" | "availability">
+  Partial<
+    Pick<
+      AutoPickConfig,
+      | "resolutionOrder"
+      | "enabledResolutions"
+      | "hdrOrder"
+      | "enabledHdr"
+      | "codecOrder"
+      | "enabledCodecs"
+      | "audioOrder"
+      | "sizes"
+      | "availability"
+      | "showBackups"
+      | "backupCount"
+      | "healthCandidates"
+    >
+  >
 > = {
   balanced4k: {
     resolutionOrder: ["2160p", "1080p", "720p", "480p"],
@@ -59,6 +75,23 @@ const presetOverrides: Record<
     },
     availability: { minimumSeeders: 5, unknownSeeders: "penalise" },
   },
+  tvStick: {
+    resolutionOrder: ["1080p", "720p", "480p", "2160p"],
+    enabledResolutions: ["1080p", "720p", "480p"],
+    hdrOrder: ["sdr", "hdr10", "hlg", "hdr10plus", "dolbyVision"],
+    enabledHdr: ["sdr"],
+    codecOrder: ["h264", "hevc", "av1"],
+    enabledCodecs: ["h264", "hevc"],
+    audioOrder: ["ac3", "eac3", "aac", "dts", "atmos", "dtshd", "dtshdma", "dtsx", "truehd", "atmosTruehd"],
+    sizes: {
+      movie: { softGb: 6, hardGb: 12 },
+      episode: { softGb: 2, hardGb: 4 },
+    },
+    availability: { minimumSeeders: 20, unknownSeeders: "penalise" },
+    showBackups: true,
+    backupCount: 3,
+    healthCandidates: 5,
+  },
   dataSaver: {
     resolutionOrder: ["1080p", "720p", "480p", "2160p"],
     enabledResolutions: ["1080p", "720p", "480p"],
@@ -71,12 +104,13 @@ const presetOverrides: Record<
 };
 
 export function createPresetConfig(preset: PresetName = "balanced4k"): AutoPickConfig {
-  return structuredClone({ ...shared, preset, ...presetOverrides[preset] });
+  return structuredClone({ ...shared, preset, ...presetOverrides[preset] }) as AutoPickConfig;
 }
 
 export const presetConfigs: Record<PresetName, AutoPickConfig> = {
   balanced4k: createPresetConfig("balanced4k"),
   maximumQuality: createPresetConfig("maximumQuality"),
   fastStart: createPresetConfig("fastStart"),
+  tvStick: createPresetConfig("tvStick"),
   dataSaver: createPresetConfig("dataSaver"),
 };

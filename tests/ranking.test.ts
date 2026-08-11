@@ -46,6 +46,40 @@ describe("ranking and selection", () => {
     expect(result.winner?.originalTitle).toBe(web.originalTitle);
   });
 
+  it("TV Stick ranks compatible torrents by reported seeders and keeps backups", async () => {
+    const mostSeeders = makeCandidate("Movie.720p.WEBRip.x264.AAC", { sizeBytes: 2 * 1024 ** 3, seeders: 1_500 });
+    const bestQuality = makeCandidate("Movie.1080p.WEB-DL.x264.AC3", { sizeBytes: 5 * 1024 ** 3, seeders: 1_200 });
+    const smaller = makeCandidate("Movie.1080p.WEB-DL.HEVC.EAC3", { sizeBytes: 2 * 1024 ** 3, seeders: 900 });
+    const backup = makeCandidate("Movie.1080p.WEBRip.x264.AAC", { sizeBytes: 4 * 1024 ** 3, seeders: 500 });
+    const result = await selectCandidates(
+      [bestQuality, smaller, backup, mostSeeders],
+      createPresetConfig("tvStick"),
+      "movie",
+      noPreflight,
+    );
+
+    expect(result.winner?.originalTitle).toBe(mostSeeders.originalTitle);
+    expect(result.selected.map((candidate) => candidate.seeders)).toEqual([1_500, 1_200, 900, 500]);
+  });
+
+  it("TV Stick blocks 4K, HDR and AV1 even when 4K was selected", async () => {
+    const tvStick = createPresetConfig("tvStick");
+    tvStick.preferredQuality = "2160p";
+    const compatible = makeCandidate("Movie.1080p.WEB-DL.x264.AAC", { sizeBytes: 5 * 1024 ** 3, seeders: 100 });
+    const incompatible = [
+      makeCandidate("Movie.2160p.WEB-DL.x264.AAC", { sizeBytes: 8 * 1024 ** 3, seeders: 5_000 }),
+      makeCandidate("Movie.1080p.WEB-DL.HDR10.x264.AAC", { sizeBytes: 5 * 1024 ** 3, seeders: 4_000 }),
+      makeCandidate("Movie.1080p.WEB-DL.AV1.AAC", { sizeBytes: 3 * 1024 ** 3, seeders: 3_000 }),
+    ];
+    const result = await selectCandidates([...incompatible, compatible], tvStick, "movie", noPreflight);
+
+    expect(result.winner?.originalTitle).toBe(compatible.originalTitle);
+    expect(result.rejected).toHaveLength(3);
+    expect(result.rejected.flatMap((entry) => entry.reasons).join(" ")).toMatch(/resolution 2160p disabled/);
+    expect(result.rejected.flatMap((entry) => entry.reasons).join(" ")).toMatch(/HDR\/SDR format disabled/);
+    expect(result.rejected.flatMap((entry) => entry.reasons).join(" ")).toMatch(/codec av1 blocked/);
+  });
+
   it("uses 1080p when 4K is absent and fallback is on", async () => {
     const only = makeCandidate("Movie.1080p.WEB-DL.x264", { seeders: 50, sizeBytes: 8 * 1024 ** 3 });
     const selectedConfig = config({ preferredQuality: "2160p", fallbackResolution: true });

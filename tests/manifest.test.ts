@@ -10,7 +10,7 @@ describe("Stremio manifest", () => {
     expect(manifest.catalogs).toEqual([]);
     expect(manifest.behaviorHints).toMatchObject({ configurable: true, configurationRequired: true, p2p: true });
     expect(manifest.id).toBe("community.autopick");
-    expect(manifest.version).toBe("1.1.0");
+    expect(manifest.version).toBe("1.2.0");
     expect(manifest.version).toBe(packageJson.version);
   });
 });
