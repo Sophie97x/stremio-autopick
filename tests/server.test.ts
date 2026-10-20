@@ -14,12 +14,13 @@ describe("public server safeguards", () => {
     await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
   });
 
-  async function listen(streamService?: StreamService, maxConcurrent = 32): Promise<string> {
+  async function listen(streamService?: StreamService, maxConcurrent = 32, rateLimitMax = 240): Promise<string> {
     const server = createApp({
       env: testEnv({
         BASE_URL: "https://autopick.click",
         UPSTREAM_ALLOWED_HOSTS: "torrentio.strem.fun",
         MAX_CONCURRENT_STREAM_REQUESTS: maxConcurrent,
+        RATE_LIMIT_MAX: rateLimitMax,
       }),
       ...(streamService ? { streamService } : {}),
     }).listen(0, "127.0.0.1");
@@ -27,6 +28,16 @@ describe("public server safeguards", () => {
     await new Promise<void>((resolve) => server.once("listening", resolve));
     return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
   }
+
+  it("limits static and API requests without blocking health checks", async () => {
+    const baseUrl = await listen(undefined, 32, 2);
+    expect((await fetch(`${baseUrl}/api/presets`)).status).toBe(200);
+    expect((await fetch(`${baseUrl}/configure/styles.css`)).status).toBe(200);
+    const limited = await fetch(`${baseUrl}/configure`);
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("retry-after")).toBeTruthy();
+    expect((await fetch(`${baseUrl}/healthz`)).status).toBe(200);
+  });
 
   it("reports the 1.2.0 version and public source capability", async () => {
     const baseUrl = await listen();

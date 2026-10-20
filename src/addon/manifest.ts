@@ -1,3 +1,5 @@
+import { trimTrailingCharacter } from "../security/strings";
+
 export const manifest = {
   id: "community.autopick",
   version: "1.2.0",
@@ -25,6 +27,6 @@ export const manifest = {
 export function createManifest(baseUrl?: string) {
   return {
     ...manifest,
-    ...(baseUrl ? { logo: `${baseUrl.replace(/\/+$/, "")}/assets/logo.svg` } : {}),
+    ...(baseUrl ? { logo: `${trimTrailingCharacter(baseUrl, "/")}/assets/logo.svg` } : {}),
   };
 }
