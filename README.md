@@ -172,6 +172,7 @@ BASE_URL=https://autopick.click
 NODE_ENV=production
 UPSTREAM_ALLOWED_HOSTS=torrentio.strem.fun
 MAX_CONCURRENT_STREAM_REQUESTS=32
+TRUSTED_PROXIES=
 TUNNEL_TOKEN=replace-with-the-cloudflare-tunnel-token
 ```
 
@@ -182,6 +183,8 @@ sudo systemctl enable --now docker
 docker compose --profile public up -d --build
 docker compose ps
 ```
+
+Before serving public traffic, follow the trusted-proxy address inspection steps in the configuration section below. Docker chooses connector addresses dynamically; configure the observed connector address instead of copying an example.
 
 Docker binds the app only to `127.0.0.1` by default. `cloudflared` in this Compose project reaches it over the Docker network at `http://autopick:7000`.
 
@@ -231,8 +234,21 @@ Publish the root `/manifest.json`, not a personal configured URL. The public lis
 | `UPSTREAM_TIMEOUT_MS` | `2500` | Timeout for each upstream addon |
 | `UPSTREAM_MAX_RESPONSE_BYTES` | `1048576` | Maximum upstream JSON response size |
 | `UPSTREAM_ALLOWED_HOSTS` | `torrentio.strem.fun` | Exact comma-separated upstream host allowlist; `*` permits all valid hosts |
+| `RATE_LIMIT_MAX` | `240` | Requests allowed per rate-limit window for each client IP |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate-limit window in milliseconds |
+| `TRUSTED_PROXIES` | empty | Comma-separated exact proxy IPs or CIDRs allowed to set the client IP via `X-Forwarded-For` |
 | `MAX_CONCURRENT_STREAM_REQUESTS` | `32` | Maximum in-flight configured stream requests |
 | `TUNNEL_TOKEN` | empty | Secret token used only by the optional `public` Cloudflare Tunnel profile |
+
+Docker assigns proxy addresses dynamically. After starting the public profile, inspect the connector address:
+
+```bash
+docker inspect --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$(docker compose --profile public ps -q cloudflared)"
+```
+
+Set `TRUSTED_PROXIES` in the ignored `.env` to that exact verified address, then run `docker compose up -d --no-deps autopick` to apply it. Recheck the address whenever the connector or network is recreated. Until configured, tunneled requests share the connector's rate-limit bucket. Do not copy an example address or trust an entire Docker subnet to avoid this check.
+
+Leave `TRUSTED_PROXIES` empty unless a reverse proxy directly connects to AutoPick. List only its exact IP address or CIDR, never `0.0.0.0/0`, a hostname, or a hop count. The trusted proxy must overwrite incoming forwarded headers before adding its own client address.
 
 ## Debug ranking
 

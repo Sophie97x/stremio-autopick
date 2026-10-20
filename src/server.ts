@@ -105,7 +105,8 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
   const uiDirectory = path.join(__dirname, "ui");
 
   app.disable("x-powered-by");
-  // Keep Express's default untrusted-proxy handling; never trust arbitrary XFF.
+  // Empty by default: only explicitly configured proxy IPs/CIDRs may supply XFF.
+  app.set("trust proxy", env.TRUSTED_PROXIES);
   app.use(rateLimit({
     windowMs: env.RATE_LIMIT_WINDOW_MS,
     limit: env.RATE_LIMIT_MAX,

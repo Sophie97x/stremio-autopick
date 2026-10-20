@@ -1,9 +1,27 @@
 import { z } from "zod";
+import { isIP } from "node:net";
 
 const booleanString = z
   .enum(["true", "false"])
   .default("false")
   .transform((value) => value === "true");
+
+function isTrustedProxyList(value: string): boolean {
+  return value.split(",").every((entry) => {
+    const candidate = entry.trim();
+    if (candidate === "") return true;
+    const parts = candidate.split("/");
+    if (parts.length > 2 || isIP(parts[0] ?? "") === 0) return false;
+    if (parts.length === 1) return true;
+    const addressFamily = isIP(parts[0] ?? "");
+    const prefix = parts[1] ?? "";
+    return /^\d+$/.test(prefix) && Number(prefix) > 0 && Number(prefix) <= (addressFamily === 4 ? 32 : 128);
+  });
+}
+
+const trustedProxyList = z.string().default("")
+  .refine(isTrustedProxyList, "TRUSTED_PROXIES must be a comma-separated list of IP addresses or CIDRs")
+  .transform((value) => value.split(",").map((entry) => entry.trim()).filter(Boolean));
 
 const envSchema = z.object({
   PORT: z.coerce.number().int().min(1).max(65_535).default(7000),
@@ -19,6 +37,7 @@ const envSchema = z.object({
   UPSTREAM_ALLOWED_HOSTS: z.string().trim().min(1).default("torrentio.strem.fun"),
   RATE_LIMIT_MAX: z.coerce.number().int().min(1).max(100_000).default(240),
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().min(1_000).max(3_600_000).default(60_000),
+  TRUSTED_PROXIES: trustedProxyList,
   MAX_CONCURRENT_STREAM_REQUESTS: z.coerce.number().int().min(1).max(1_024).default(32),
 });
 
