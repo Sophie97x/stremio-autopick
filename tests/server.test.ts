@@ -14,13 +14,19 @@ describe("public server safeguards", () => {
     await Promise.all(servers.splice(0).map((server) => new Promise<void>((resolve) => server.close(() => resolve()))));
   });
 
-  async function listen(streamService?: StreamService, maxConcurrent = 32, rateLimitMax = 240): Promise<string> {
+  async function listen(
+    streamService?: StreamService,
+    maxConcurrent = 32,
+    rateLimitMax = 240,
+    trustedProxies: string[] = [],
+  ): Promise<string> {
     const server = createApp({
       env: testEnv({
         BASE_URL: "https://autopick.click",
         UPSTREAM_ALLOWED_HOSTS: "torrentio.strem.fun",
         MAX_CONCURRENT_STREAM_REQUESTS: maxConcurrent,
         RATE_LIMIT_MAX: rateLimitMax,
+        TRUSTED_PROXIES: trustedProxies,
       }),
       ...(streamService ? { streamService } : {}),
     }).listen(0, "127.0.0.1");
@@ -37,6 +43,18 @@ describe("public server safeguards", () => {
     expect(limited.status).toBe(429);
     expect(limited.headers.get("retry-after")).toBeTruthy();
     expect((await fetch(`${baseUrl}/healthz`)).status).toBe(200);
+  });
+
+  it("uses forwarded clients only when the connected proxy is trusted", async () => {
+    const baseUrl = await listen(undefined, 32, 1, ["127.0.0.1"]);
+    expect((await fetch(`${baseUrl}/api/presets`, { headers: { "x-forwarded-for": "198.51.100.10" } })).status).toBe(200);
+    expect((await fetch(`${baseUrl}/api/presets`, { headers: { "x-forwarded-for": "198.51.100.11" } })).status).toBe(200);
+  });
+
+  it("ignores spoofed forwarded clients when the connected proxy is untrusted", async () => {
+    const baseUrl = await listen(undefined, 32, 1);
+    expect((await fetch(`${baseUrl}/api/presets`, { headers: { "x-forwarded-for": "198.51.100.10" } })).status).toBe(200);
+    expect((await fetch(`${baseUrl}/api/presets`, { headers: { "x-forwarded-for": "198.51.100.11" } })).status).toBe(429);
   });
 
   it("reports the 1.2.0 version and public source capability", async () => {

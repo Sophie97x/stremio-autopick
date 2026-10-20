@@ -172,6 +172,7 @@ BASE_URL=https://autopick.click
 NODE_ENV=production
 UPSTREAM_ALLOWED_HOSTS=torrentio.strem.fun
 MAX_CONCURRENT_STREAM_REQUESTS=32
+TRUSTED_PROXIES=172.20.0.2
 TUNNEL_TOKEN=replace-with-the-cloudflare-tunnel-token
 ```
 
@@ -231,8 +232,13 @@ Publish the root `/manifest.json`, not a personal configured URL. The public lis
 | `UPSTREAM_TIMEOUT_MS` | `2500` | Timeout for each upstream addon |
 | `UPSTREAM_MAX_RESPONSE_BYTES` | `1048576` | Maximum upstream JSON response size |
 | `UPSTREAM_ALLOWED_HOSTS` | `torrentio.strem.fun` | Exact comma-separated upstream host allowlist; `*` permits all valid hosts |
+| `RATE_LIMIT_MAX` | `240` | Requests allowed per rate-limit window for each client IP |
+| `RATE_LIMIT_WINDOW_MS` | `60000` | Rate-limit window in milliseconds |
+| `TRUSTED_PROXIES` | empty | Comma-separated exact proxy IPs or CIDRs allowed to set the client IP via `X-Forwarded-For` |
 | `MAX_CONCURRENT_STREAM_REQUESTS` | `32` | Maximum in-flight configured stream requests |
 | `TUNNEL_TOKEN` | empty | Secret token used only by the optional `public` Cloudflare Tunnel profile |
+
+Leave `TRUSTED_PROXIES` empty unless a reverse proxy directly connects to AutoPick. List only its exact IP address or CIDR, never `0.0.0.0/0`, a hostname, or a hop count. The trusted proxy must overwrite incoming forwarded headers before adding its own client address.
 
 ## Debug ranking
 
