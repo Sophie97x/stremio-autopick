@@ -184,6 +184,8 @@ docker compose --profile public up -d --build
 docker compose ps
 ```
 
+Before serving public traffic, follow the trusted-proxy address inspection steps in the configuration section below. Docker chooses connector addresses dynamically; configure the observed connector address instead of copying an example.
+
 Docker binds the app only to `127.0.0.1` by default. `cloudflared` in this Compose project reaches it over the Docker network at `http://autopick:7000`.
 
 If the tunnel connector runs on a separate hypervisor instead, set `BIND_ADDRESS` to the server's private IP, point the tunnel at that private address, and firewall the port so only the connector host can reach it.
