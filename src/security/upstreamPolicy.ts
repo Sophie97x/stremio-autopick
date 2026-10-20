@@ -1,3 +1,4 @@
+import { trimTrailingCharacter } from "./strings";
 import type { AutoPickConfig } from "../config/schema";
 
 export class SourcePolicyError extends Error {
@@ -8,7 +9,7 @@ export class SourcePolicyError extends Error {
 }
 
 function normaliseHostname(value: string): string {
-  return value.trim().toLowerCase().replace(/\.+$/, "");
+  return trimTrailingCharacter(value.trim().toLowerCase(), ".");
 }
 
 export function parseAllowedUpstreamHosts(value: string): { allowAny: boolean; hosts: string[] } {

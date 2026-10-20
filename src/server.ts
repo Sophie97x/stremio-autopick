@@ -2,6 +2,8 @@ import "dotenv/config";
 import path from "node:path";
 import express, { type ErrorRequestHandler, type RequestHandler } from "express";
 import sdk from "stremio-addon-sdk";
+import { rateLimit } from "express-rate-limit";
+import { trimTrailingCharacter } from "./security/strings";
 import { manifest } from "./addon/manifest";
 import { createAddonInterface } from "./addon/stremio";
 import { StreamService } from "./addon/streamHandler";
@@ -21,7 +23,7 @@ export interface CreateAppOptions {
 }
 
 function cleanBaseUrl(value: string): string {
-  return value.replace(/\/+$/, "");
+  return trimTrailingCharacter(value, "/");
 }
 
 function installUrl(manifestUrl: string): string {
@@ -103,6 +105,15 @@ export function createApp(options: CreateAppOptions = {}): express.Express {
   const uiDirectory = path.join(__dirname, "ui");
 
   app.disable("x-powered-by");
+  // Keep Express's default untrusted-proxy handling; never trust arbitrary XFF.
+  app.use(rateLimit({
+    windowMs: env.RATE_LIMIT_WINDOW_MS,
+    limit: env.RATE_LIMIT_MAX,
+    standardHeaders: "draft-8",
+    legacyHeaders: false,
+    skip: (request) => request.path === "/healthz",
+    message: { error: "Too many requests; please try again shortly" },
+  }));
   app.use(express.json({ limit: "16kb", strict: true }));
   app.use(securityHeaders);
   app.use(cacheHeaders);
