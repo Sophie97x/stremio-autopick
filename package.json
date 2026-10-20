@@ -34,7 +34,7 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vitest": "^4.0.13"
+    "vitest": "^4.1.11"
   },
   "overrides": {
     "path-to-regexp": "0.1.13",
